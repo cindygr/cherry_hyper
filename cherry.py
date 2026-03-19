@@ -5,6 +5,7 @@ from os import listdir, mkdir, chdir, getcwd
 from os.path import exists, isdir
 import xmltodict
 import json as json
+import imageio as imageio
 
 
 def convert_to_numpy(hdr_path):
@@ -15,7 +16,7 @@ def convert_to_numpy(hdr_path):
     data = img.load()
 
     print("Image shape (rows, cols, bands):", data.shape)
-    return data
+    return data, img
 
 
 def show_as_image(img):
@@ -43,6 +44,7 @@ def extract_data_as_numpy():
     day_dates = []
     for _ in range(0, 60):
         day_dates.append('Not found')
+    errors = []
 
     plant_count = 0
     # Number of plants, number of days, side
@@ -73,11 +75,10 @@ def extract_data_as_numpy():
             
             if len(fname_plant_parts) != 2:
                 continue
-            fname_meta_data = day_dir + "/" + fname_plant + "/metadata/"
-            chdir(fname_meta_data)
-            for fname_xml in listdir(fname_meta_data):
+            fname_meta_data_dir = day_dir + "/" + fname_plant + "/metadata/"
+            for fname_xml in listdir(fname_meta_data_dir):
                 if ".xml" in fname_xml:
-                    with open(fname_xml, "r") as f:
+                    with open(fname_meta_data_dir + fname_xml, "r") as f:
                         xmldata = f.read()
                     # Use xmltodict.parse() to convert the XML string to an OrderedDict
                     ordered_dict = xmltodict.parse(xmldata)
@@ -89,7 +90,7 @@ def extract_data_as_numpy():
                     if global_tag != None:
                         plant_id = global_tag["key"]['@field']
                     else: 
-                        print(f"Bad folder {fname_meta_data}")
+                        print(f"Bad folder {fname_meta_data_dir}")
                         continue
                         #plant_id = global_tag["key"]['@field']
                         #plant_id = "None"
@@ -115,7 +116,7 @@ def extract_data_as_numpy():
                         print(f"Bad match month Nov")
                     if fname_parts[4] == 'Dec' and plant_id_parts[2] != 12:
                         print(f"Bad match month Dec")
-                    print(f"plant_id {plant_id} {fname_meta_data}")
+                    print(f"plant_id {plant_id} {fname_meta_data_dir}")
 
                     if not plant_id_parts[0] in plant_numbers:
                         plant_numbers[plant_id_parts[0]] = plant_count
@@ -133,49 +134,80 @@ def extract_data_as_numpy():
                     if plant_days[which_plant][day][side]:
                         if b_inserted:
                             if plant_days[which_plant][day][1]:
-                                print(f"Warning, duplicate {plant_id}")
+                                print(f"Error, triplicate with guessed side {plant_id} replacing")
+                                errors.append(plant_id)
+                                errors.append(fname_meta_data_dir)
                             else:
                                 side = 1
                                 plant_days[which_plant][day][side] = True
                         else:
-                            print(f"Warning, duplicate {plant_id}")
+                            side = (side + 1) % 2
+                            if plant_days[which_plant][day][side]:
+                                print(f"Error, triplicate {plant_id} replacing")
+                                errors.append(plant_id)
+                                errors.append(fname_meta_data_dir)
+                            else:
+                                print(f"Warning, mislabeled {plant_id}")
+                                plant_days[which_plant][day][side] = True
                     else:
                         plant_days[which_plant][day][side] = True
 
-    print(f"Dates: {day_dates}")
+                    plant_unique_id = f"P{which_plant}_D{day}_S{side}_{plant_id_parts[0]}_{day_dates[day]}"
+                    print(f"Unique id {plant_unique_id}")
+            # Now get the 
+            fname_hyper_data_dir = day_dir + "/" + fname_plant + "/results/"
+            for fname_results in listdir(fname_hyper_data_dir):
+                if ".hdr" in fname_results:
+                    numpy_fname = numpy_data_dir + plant_unique_id + ".npy"
+                    if exists(numpy_fname):
+                        print(f"Skipping {numpy_fname}, already processed")
+                        continue
+                    try:
+                        data, sp_im = convert_to_numpy(fname_hyper_data_dir + fname_results)
+                    except:
+                        print(f"Data file not found {fname_hyper_data_dir} {fname_results}")
+                        errors.append(f"Missing data file {fname_hyper_data_dir} {fname_results}")
+                        continue
+                        
+                    np.save(numpy_data_dir + plant_unique_id + ".npy", data)
+                    # Gets 3 of the hyperspectral channels at nm 60, 30, and 10 and uses that as the red, green, and blue channels
+                    rgb = spy.get_rgb(sp_im, [10, 30, 60]) * 256
+                    # This nonsense is because spy must be using the OpenCV image format, which has
+                    #.  y is in channel 0, x in channel 1, and y is flipped top/bottom
+                    #.  uses blue, green, red instead of red, green blue
+                    rgb = np.transpose(rgb, axes=[1,0,2])
+                    rgb = np.flip(rgb, axis=1)
+                    imageio.imwrite(images_data_dir + plant_unique_id + "_hdr.png", rgb.astype(np.uint8))
+                if "VIEWFINDER" in fname_results:
+                    rgb_view = imageio.imread(fname_hyper_data_dir + fname_results)
+                    imageio.imwrite(images_data_dir + plant_unique_id + "_viewfinder.png", rgb_view)
+
+
+    missing = []
     for pid in range(0, plant_count):
         for day in range(0, plant_days.shape[1]):
             if plant_days[pid][day][0] and not plant_days[pid][day][1]:
+                missing.append([pid, day, 1, plant_names[pid], day_dates[day]])
                 print(f"Plant {pid} {plant_names[pid]} day {day_dates[day]} only side 0" )
             if plant_days[pid][day][1] and not plant_days[pid][day][0]:
+                missing.append([pid, day, 0, plant_names[pid], day_dates[day]])
                 print(f"Plant {pid} {plant_names[pid]} day {day_dates[day]} only side 1" )
             if not plant_days[pid][day][0] and not plant_days[pid][day][1]:
                 if day in day_dates:
+                    missing.append([pid, day, 0, plant_names[pid], day_dates[day]])
+                    missing.append([pid, day, 1, plant_names[pid], day_dates[day]])
                     print(f"Plant {pid} {plant_names[pid]} missing day {day_dates[day]} both sides" )
 
-    print(plant_numbers)
-    return plant_days, day_dates            
+    print(f"Dates: {day_dates}")
+    print(f"Plant numbers: {plant_numbers}")
+    print(f"Errors {errors}")
+    with open(data_dir + "mapping.json", "w") as f:
+        all_dict = {"Days": day_dates, "Plants": plant_numbers, "Errors": errors, "Missing": missing}
+        json.dump(all_dict, f, indent=4)
+    return plant_days, day_dates         
 
 
 if __name__ == '__main__':
 
     extract_data_as_numpy()
 
-    # Load the hyperspectral image
-    img = spy.open_image(hdr_path)
-
-    # Convert to a numpy array (optional, but useful)
-    data = img.load()
-
-    print("Image shape (rows, cols, bands):", data.shape)
-
-    # Display a quick RGB composite
-    # SPECIM cameras often use bands around:
-    # R ≈ 60, G ≈ 30, B ≈ 10 (this varies by model!)
-    rgb = spy.get_rgb(img, [60, 30, 10])
-
-    plt.figure(figsize=(8, 6))
-    plt.imshow(rgb)
-    plt.title("SPECIM RGB Composite")
-    plt.axis("off")
-    plt.show()

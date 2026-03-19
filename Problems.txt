@@ -386,3 +386,14 @@ Plant 7 P163 day 12-12 only side 1
 Plant 8 P406 day 11-20 only side 0
 Plant 8 P406 day 12-4 only side 1
 {'P157': 0, 'P20': 1, 'P33': 2, 'P408': 3, 'P401': 4, 'P418': 5, 'P430': 6, 'P163': 7, 'P406': 8, 'P338': 9, 'P421': 10}
+Data file not found /Full image dataset 12 Dec 2025/2025-12-12_003/results/ REFLECTANCE_2025-12-12_003.hdr
+Missing .dat file
+Full image dataset 12 Dec 2025/2025-12-12_004/results/ REFLECTANCE_2025-12-12_004.hdr
+Full image dataset 12 Dec 2025/2025-12-12_005/results/ REFLECTANCE_2025-12-12_005.hdr
+
+Errors ['P430.11.24.25', '/Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 24 Nov 2025/2025-11-24_009/metadata/', 
+'Missing data file /Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 12 Dec 2025/2025-12-12_003/results/ REFLECTANCE_2025-12-12_003.hdr', 
+'Missing data file /Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 12 Dec 2025/2025-12-12_004/results/ REFLECTANCE_2025-12-12_004.hdr', 
+'Missing data file /Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 12 Dec 2025/2025-12-12_005/results/ REFLECTANCE_2025-12-12_005.hdr', 
+'Missing data file /Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 12 Dec 2025/2025-12-12_002/results/ REFLECTANCE_2025-12-12_002.hdr', 
+'Missing data file /Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/Full image dataset 12 Dec 2025/2025-12-12_007/results/ REFLECTANCE_2025-12-12_007.hdr']
