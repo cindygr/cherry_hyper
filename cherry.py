@@ -161,7 +161,7 @@ def extract_data_as_numpy():
                     numpy_fname = numpy_data_dir + plant_unique_id + ".npy"
                     if exists(numpy_fname):
                         print(f"Skipping {numpy_fname}, already processed")
-                        continue
+                        #continue
                     try:
                         data, sp_im = convert_to_numpy(fname_hyper_data_dir + fname_results)
                     except:
@@ -169,7 +169,7 @@ def extract_data_as_numpy():
                         errors.append(f"Missing data file {fname_hyper_data_dir} {fname_results}")
                         continue
                         
-                    np.save(numpy_data_dir + plant_unique_id + ".npy", data)
+                    np.save(numpy_data_dir + plant_unique_id + ".npy", data.astype(np.float32))
                     # Gets 3 of the hyperspectral channels at nm 60, 30, and 10 and uses that as the red, green, and blue channels
                     rgb = spy.get_rgb(sp_im, [10, 30, 60]) * 256
                     # This nonsense is because spy must be using the OpenCV image format, which has
@@ -179,8 +179,12 @@ def extract_data_as_numpy():
                     rgb = np.flip(rgb, axis=1)
                     imageio.imwrite(images_data_dir + plant_unique_id + "_hdr.png", rgb.astype(np.uint8))
                 if "VIEWFINDER" in fname_results:
+                    rgb_fname = images_data_dir + plant_unique_id + "_viewfinder.png"
+                    if exists(rgb_fname):
+                        print(f"Skipping {rgb_fname}, already processed")
+                        continue
                     rgb_view = imageio.imread(fname_hyper_data_dir + fname_results)
-                    imageio.imwrite(images_data_dir + plant_unique_id + "_viewfinder.png", rgb_view)
+                    imageio.imwrite(rgb_fname, rgb_view)
 
 
     missing = []

@@ -28,30 +28,16 @@ def example_process_files(source_dir, dest_dir):
         unique_id = fname[0:20]
 
         # do something
-
+        data = np.load(full_fname)
+        out_fname = dest_dir + fname
+        np.save(out_fname, data.astype(np.float16))
         output_fname = unique_id + "_blah.type"
         # write output_fname
 
 
 if __name__ == '__main__':
+    numpy_data_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy/"
+    numpy_data_small_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy_small/"
 
-    extract_data_as_numpy()
+    example_process_files(numpy_data_dir, numpy_data_small_dir)
 
-    # Load the hyperspectral image
-    img = spy.open_image(hdr_path)
-
-    # Convert to a numpy array (optional, but useful)
-    data = img.load()
-
-    print("Image shape (rows, cols, bands):", data.shape)
-
-    # Display a quick RGB composite
-    # SPECIM cameras often use bands around:
-    # R ≈ 60, G ≈ 30, B ≈ 10 (this varies by model!)
-    rgb = spy.get_rgb(img, [60, 30, 10])
-
-    plt.figure(figsize=(8, 6))
-    plt.imshow(rgb)
-    plt.title("SPECIM RGB Composite")
-    plt.axis("off")
-    plt.show()
