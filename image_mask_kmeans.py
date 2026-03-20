@@ -11,6 +11,7 @@ from scipy.cluster.vq import kmeans, vq, whiten
 import imageio
 from skimage.color import rgb2hsv
 import matplotlib.pyplot as plt
+import json as json
 
 
 def read_and_cluster_image(image_name, use_hsv, n_clusters):
@@ -101,13 +102,69 @@ def read_and_cluster_image(image_name, use_hsv, n_clusters):
     axs[2].set_title("ID colored by cluster average")
 
 
-if __name__ == '__main__':
-    read_and_cluster_image("real_apple.jpg", True, 4)
-    read_and_cluster_image("trees.png", True, 2)
-    read_and_cluster_image("trees_depth.png", False, 3)
-    read_and_cluster_image("staged_apple.png", True, 3)
-    read_and_cluster_image("staged_apple.png", False, 3)
-    # Depending on if your mac, windows, linux, and if interactive is true, you may need to call this to get the plt
-    # windows to show
+def read_and_cluster_hyper(fname, n_clusters):
+    """ Read in the data, cluster the pixels 
+    @fname - name of data file to cluster
+    @n_clusters - number of clusters """
+
+    # Read in the data file
+    data = np.load(fname)
+
+    # Remove the mean from each channel
+    data_normalized = whiten(data)
+    # Do the actual clustering
+    centers = kmeans(data_normalized, n_clusters)
+    # Get the ids for each row in the data - returns a list of cluster ids (0, 1, 2,..)
+    ids = vq(data_normalized, centers[0])
+
+    # Call unwhiten here to make the centers be back where they were
+    return centers
+
+
+def plot_centers(centers):
+    nrows = 3
+    ncols = 6
+    fig, axs = plt.subplots(nrows, ncols)
+
+    for indx, center in enumerate(centers):
+        row = indx // ncols
+        col = indx % ncols
+        axs[row, col].plot(center)
     plt.show()
+
+
+def process_one_image(base_name, clusters):
+    """ Make two output files: One is a list of clusters (size of n pixels) the other is an image colored by cluster"""
+
+    data_name = base_name + "_flattened.npy"
+    map_name = base_name + "_map.json"
+    clusters_name = base_name + "_clusters.json"
+    img_name = base_name + "_clusters.png"
+    data_flattened = np.load(data_name)
+    map = []
+    with open(map_name, "r") as f:
+        map = json.load(f)
+    
+    # Need to fix this
+    ids = vq(data_normalized, centers[0])
+    ids = kmeans_centers(data_flattened, centers)
+
+    # Want this to be a color map
+    cols = [(255, 0, 0), (125, 125, 0), (0, 255, 0)]
+    im_rgb = np.zeros(512, 512, 3)
+    for pix, id in zip(map, ids):
+        im_rgb[pix[0], pix[1], :] = cols[id].transpose()
+
+    imageio.imwrite(img_name) 
+
+
+def loop_all_data():
+    for fname in lisdir():
+        # get name
+        process_one_image()
+
+if __name__ == '__main__':
+    read_and_cluster_hyper()
+    plot_centers()
+    loop_all_data()
     print("done")
