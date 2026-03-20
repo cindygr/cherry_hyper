@@ -7,9 +7,9 @@ import json as json
 import imageio as imageio
 import spectral as spy
 
-source_dir = "/Users/millarn/VSCode/data/cherry/numpy_small/"
-dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_small_output/"
-images_data_dir = "/Users/millarn/VSCode/data/cherry/rgb_images/"
+source_dir = "/Users/millarn/VSCode/data/cherry/numpy/"
+dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_output/"
+
 
 def apply_boolean(source_dir, dest_dir):
    
@@ -26,7 +26,7 @@ for fname in listdir(source_dir):
         if len(fname_parts) < 4:
             print(f"Skipping {fname}, not a valid file name")
             continue
-        unique_id = fname[0:20]
+        unique_id = fname[0:-4]
 
         # Load data and use boolean logic to select plant pixels
         data = np.load(full_fname)
@@ -41,7 +41,7 @@ for fname in listdir(source_dir):
         data_bool_bright_and_slope = np.logical_and(data_bool_brightness, data_bool_slope)
         data_bool_green_bump = np.logical_and(data_bool_greater_than_red, data_bool_greater_than_blue)
         data_bool = np.logical_and(data_bool_green_bump, data_bool_bright_and_slope)
-        np.save(dest_dir + unique_id + ".limited.npy", data_bool)
+        np.save(dest_dir + unique_id + "_limited.npy", data_bool)
         im_bool = data_bool.astype(np.uint8)*255
         rgb = np.transpose(im_bool, axes=[1,0])
         rgb = np.flip(rgb, axis=1)
@@ -49,7 +49,7 @@ for fname in listdir(source_dir):
 
 if __name__ == '__main__':
     
-    numpy_data_small_dir = "/Users/millarn/VSCode/data/cherry/numpy_small/"
-    numpy_data_output_dir = "/Users/millarn/VSCode/data/cherry/numpy_small_output/"
+    numpy_data_small_dir = "/Users/millarn/VSCode/data/cherry/numpy/"
+    numpy_data_output_dir = "/Users/millarn/VSCode/data/cherry/numpy_output/"
     apply_boolean(numpy_data_small_dir, numpy_data_output_dir)
 
