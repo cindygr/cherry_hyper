@@ -4,30 +4,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# ------------------------------------------------------------------------------
-# 1) Dummy data: N samples, each with 200 features (replace with your data)
-# ------------------------------------------------------------------------------
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Example: synthetic data (3 clusters) in 200-D
-torch.manual_seed(42)
-N = 1200        # number of samples (can be whatever you have)
-D = 200         # feature dimension (your "size 200")
-K = 3           # number of clusters you expect
-
-centers = torch.stack([
-    torch.randn(D) * 0.5 + 2.0,
-    torch.randn(D) * 0.5 - 2.0,
-    torch.randn(D) * 0.5
-])
-data = torch.cat([
-    centers[0] + 0.6 * torch.randn(N // 3, D),
-    centers[1] + 0.6 * torch.randn(N // 3, D),
-    centers[2] + 0.6 * torch.randn(N - 2 * (N // 3), D),
-], dim=0).to(device)
-
-# If you have real data:
-# data = torch.tensor(your_numpy_array, dtype=torch.float32).to(device)  # shape [N, 200]
 
 # ------------------------------------------------------------------------------
 # 2) Simple Autoencoder to learn embeddings
@@ -51,37 +27,6 @@ class AE(nn.Module):
         x_hat = self.decoder(z)
         return x_hat, z
 
-latent_dim = 16
-model = AE(in_dim=D, latent_dim=latent_dim).to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.MSELoss()
-
-# Tiny DataLoader for simplicity (full-batch works too if it fits)
-batch_size = 256
-dataset = torch.utils.data.TensorDataset(data)
-loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
-
-# Train AE (self-supervised)
-epochs = 20
-model.train()
-for epoch in range(1, epochs + 1):
-    total = 0.0
-    for (x,) in loader:
-        x = x.to(device)
-        optimizer.zero_grad()
-        x_hat, _ = model(x)
-        loss = criterion(x_hat, x)
-        loss.backward()
-        optimizer.step()
-        total += loss.item() * x.size(0)
-    print(f"Epoch {epoch:02d}/{epochs}  recon_loss={total/len(dataset):.4f}")
-
-# ------------------------------------------------------------------------------
-# 3) Get embeddings (latent vectors) for clustering
-# ------------------------------------------------------------------------------
-model.eval()
-with torch.no_grad():
-    _, Z = model(data)  # [N, latent_dim]
 
 # ------------------------------------------------------------------------------
 # 4) K-means in PyTorch (no sklearn dependency)
@@ -126,34 +71,6 @@ def kmeans_torch(X, k, num_iters=50, verbose=False):
 
     return assignments, centers
 
-assignments, centers = kmeans_torch(Z, K, num_iters=100, verbose=True)
-
-print("\nCluster counts:")
-for j in range(K):
-    print(f"  Cluster {j}: {(assignments == j).sum().item()} samples")
-
-# ------------------------------------------------------------------------------
-# 5) (Optional) Map clusters to “classes”
-# ------------------------------------------------------------------------------
-# In unsupervised settings, labels are arbitrary. If you later obtain
-# a few labeled examples, you can post-hoc map cluster IDs to classes.
-
-
-# --- After k-means finishes in the training script ---
-
-# Save only the encoder (we don't need decoder for clustering)
-encoder_state = model.encoder.state_dict()
-torch.save({
-    "encoder_state": encoder_state,
-    "latent_dim": latent_dim,
-    "in_dim": D,
-    "centers": centers.detach().cpu(),   # [K, latent_dim]
-}, "ae_kmeans_artifacts.pt")
-
-print("Saved encoder and centers to ae_kmeans_artifacts.pt")
-
-import torch
-import torch.nn as nn
 
 # Rebuild the same encoder architecture
 class Encoder(nn.Module):
@@ -219,18 +136,6 @@ def assign_to_clusters(new_data: torch.Tensor,
     return assignments
 
 
-import torch
-
-# Suppose you have 5 new samples, 200-D each
-X_new = torch.randn(5, 200)  # Replace with your real data
-
-assignments = assign_to_clusters(X_new, "ae_kmeans_artifacts.pt")
-print("Assigned cluster IDs:", assignments.tolist())
-
-
-
-import torch
-
 @torch.no_grad()
 def assign_with_scores(new_data, artifacts_path="ae_kmeans_artifacts.pt", temperature=1.0):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -253,3 +158,97 @@ def assign_with_scores(new_data, artifacts_path="ae_kmeans_artifacts.pt", temper
     probs = torch.softmax(logits, dim=1)           # [N, K]
     hard = probs.argmax(dim=1)
     return hard, probs
+
+
+if __name__ == '__main__':
+
+    # ------------------------------------------------------------------------------
+    # 1) Dummy data: N samples, each with 200 features (replace with your data)
+    # ------------------------------------------------------------------------------
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Example: synthetic data (3 clusters) in 200-D
+    torch.manual_seed(42)
+    N = 1200        # number of samples (can be whatever you have)
+    D = 150         # feature dimension (your "size 200")
+    K = 3           # number of clusters you expect
+
+    centers = torch.stack([
+        torch.randn(D) * 0.5 + 2.0,
+        torch.randn(D) * 0.5 - 2.0,
+        torch.randn(D) * 0.5
+    ])
+    data = torch.cat([
+        centers[0] + 0.6 * torch.randn(N // 3, D),
+        centers[1] + 0.6 * torch.randn(N // 3, D),
+        centers[2] + 0.6 * torch.randn(N - 2 * (N // 3), D),
+    ], dim=0).to(device)
+
+    # If you have real data:
+    # data = torch.tensor(your_numpy_array, dtype=torch.float32).to(device)  # shape [N, 200]
+
+
+    latent_dim = 16
+    model = AE(in_dim=D, latent_dim=latent_dim).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    criterion = nn.MSELoss()
+
+    # Tiny DataLoader for simplicity (full-batch works too if it fits)
+    batch_size = 256
+    dataset = torch.utils.data.TensorDataset(data)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
+
+    # Train AE (self-supervised)
+    epochs = 20
+    model.train()
+    for epoch in range(1, epochs + 1):
+        total = 0.0
+        for (x,) in loader:
+            x = x.to(device)
+            optimizer.zero_grad()
+            x_hat, _ = model(x)
+            loss = criterion(x_hat, x)
+            loss.backward()
+            optimizer.step()
+            total += loss.item() * x.size(0)
+        print(f"Epoch {epoch:02d}/{epochs}  recon_loss={total/len(dataset):.4f}")
+
+    # ------------------------------------------------------------------------------
+    # 3) Get embeddings (latent vectors) for clustering
+    # ------------------------------------------------------------------------------
+    model.eval()
+    with torch.no_grad():
+        _, Z = model(data)  # [N, latent_dim]
+
+    assignments, centers = kmeans_torch(Z, K, num_iters=100, verbose=True)
+
+    print("\nCluster counts:")
+    for j in range(K):
+        print(f"  Cluster {j}: {(assignments == j).sum().item()} samples")
+
+    # ------------------------------------------------------------------------------
+    # 5) (Optional) Map clusters to “classes”
+    # ------------------------------------------------------------------------------
+    # In unsupervised settings, labels are arbitrary. If you later obtain
+    # a few labeled examples, you can post-hoc map cluster IDs to classes.
+
+
+    # --- After k-means finishes in the training script ---
+
+    # Save only the encoder (we don't need decoder for clustering)
+    encoder_state = model.encoder.state_dict()
+    torch.save({
+        "encoder_state": encoder_state,
+        "latent_dim": latent_dim,
+        "in_dim": D,
+        "centers": centers.detach().cpu(),   # [K, latent_dim]
+    }, "ae_kmeans_artifacts.pt")
+
+    print("Saved encoder and centers to ae_kmeans_artifacts.pt")
+
+
+    # Just another example Suppose you have 5 new samples, 200-D each
+    X_new = torch.randn(5, 200)  # Replace with your real data
+
+    assignments = assign_to_clusters(X_new, "ae_kmeans_artifacts.pt")
+    print("Assigned cluster IDs:", assignments.tolist())

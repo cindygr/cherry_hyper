@@ -8,10 +8,14 @@ import numpy as np
 from scipy.cluster.vq import kmeans, vq, whiten
 
 # Using imageio to read in the images and skimage to do the color conversion
+import skimage
 import imageio
 from skimage.color import rgb2hsv
 import matplotlib.pyplot as plt
 import json as json
+from os import listdir, mkdir, chdir, getcwd
+from os.path import exists, isdir
+
 
 
 def read_and_cluster_image(image_name, use_hsv, n_clusters):
@@ -101,7 +105,6 @@ def read_and_cluster_image(image_name, use_hsv, n_clusters):
     axs[1].set_title("ID colored by rgb")
     axs[2].set_title("ID colored by cluster average")
 
-
 def read_and_cluster_hyper(fname, n_clusters):
     """ Read in the data, cluster the pixels 
     @fname - name of data file to cluster
@@ -111,14 +114,20 @@ def read_and_cluster_hyper(fname, n_clusters):
     data = np.load(fname)
 
     # Remove the mean from each channel
-    data_normalized = whiten(data)
+    data_normalized = whiten(data).astype(np.double)
     # Do the actual clustering
     centers = kmeans(data_normalized, n_clusters)
     # Get the ids for each row in the data - returns a list of cluster ids (0, 1, 2,..)
     ids = vq(data_normalized, centers[0])
 
+    centers_unwhitened = np.zeros((n_clusters, data.shape[1]))
+    for indx in range(0, n_clusters):
+        b_cur_id = ids[0] == indx
+        data_with_id = data[b_cur_id, :]
+        data_avg_rows = data_with_id.mean(axis=0)
+        centers_unwhitened[indx, :] = data_avg_rows
     # Call unwhiten here to make the centers be back where they were
-    return centers
+    return centers_unwhitened, ids
 
 
 def plot_centers(centers):
@@ -130,6 +139,7 @@ def plot_centers(centers):
         row = indx // ncols
         col = indx % ncols
         axs[row, col].plot(center)
+        axs[row, col].set_ylim(0, 2.5)
     plt.show()
 
 
@@ -146,25 +156,31 @@ def process_one_image(base_name, clusters):
         map = json.load(f)
     
     # Need to fix this
-    ids = vq(data_normalized, centers[0])
-    ids = kmeans_centers(data_flattened, centers)
+    ids = vq(data_flattened, clusters)
 
     # Want this to be a color map
-    cols = [(255, 0, 0), (125, 125, 0), (0, 255, 0)]
-    im_rgb = np.zeros(512, 512, 3)
-    for pix, id in zip(map, ids):
+    cols = [np.array([255, 0, 0]), np.array([125, 125, 0]), np.array([0, 255, 0])]
+    im_rgb = np.zeros((512, 512, 3))
+    for pix, id in zip(map, ids[0]):
         im_rgb[pix[0], pix[1], :] = cols[id].transpose()
 
+    plt.imshow(im_rgb)
+    plt.show()
     imageio.imwrite(img_name) 
 
 
-def loop_all_data():
-    for fname in lisdir():
-        # get name
-        process_one_image()
+def loop_all_data(source_dir, centers):
+    for fname in listdir(source_dir):
+        if fname.endswith(".npy") and "flattened" in fname:
+            # get name without the _flattened.npy
+            base_name = fname[0:-14]
+            process_one_image(base_name=source_dir +base_name, clusters=centers)
+
 
 if __name__ == '__main__':
-    read_and_cluster_hyper()
-    plot_centers()
-    loop_all_data()
+    fname = "/Users/millarn/VSCode/data/cherry/numpy_random_samples/sample_0.npy"
+    n_clusters = 3
+    centers, ids = read_and_cluster_hyper(fname, n_clusters=n_clusters)
+   # plot_centers(centers=centers)
+    loop_all_data(source_dir="/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/", centers=centers)
     print("done")

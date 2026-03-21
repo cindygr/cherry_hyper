@@ -22,7 +22,7 @@ def flatten_arrays(source_dir, dest_dir):
         unique_id = fname[0:-4]
         full_data_fname = numpy_data_dir + fname
         full_mask_name =  mask_data_dir + fname[0:-4] + "_limited.npy"
-
+        
         # Unique id - use for naming new files
         fname_parts = fname.split("_")
         if len(fname_parts) < 4:
@@ -39,14 +39,22 @@ def flatten_arrays(source_dir, dest_dir):
         # Make empty array to hold flattened data
         flattened_data = np.zeros((num_pixels,134), dtype=np.float16)
 
+        # Make map of pixel locations where mask is True
+        map_name =   fname[0:-4] + "_map.json"
+        map = []
+
         # Loop through each pixel and add to flattened array
         pixel_index = 0
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 if mask[i, j] == True:
                     flattened_data[pixel_index] = data[i, j, 20:154]  # add bands 20-154 to flattened array
+                    map.append((i, j))  # save original pixel location
                     pixel_index += 1
         np.save(dest_dir + unique_id + "_flattened.npy", flattened_data)
+
+        with open(dest_dir + map_name, 'w') as f:
+            json.dump(map, f)
 
 
 if __name__ == '__main__':
