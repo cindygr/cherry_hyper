@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from os import listdir, mkdir, chdir, getcwd
 from os.path import exists, isdir
-import xmltodict
 import json as json
 import imageio as imageio
+
 
 # Make one big n pixels X n channels file for each image
 def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):

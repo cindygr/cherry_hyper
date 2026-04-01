@@ -8,7 +8,7 @@ import spectral as spy
 from skimage.morphology import area_closing
 
 
-def make_rgb(data, mask, lower_bds, upper_bds):
+def make_rgb(data, mask, lower_bds=(0, 0), upper_bds=(512, 512)):
     # pix_mid_ix = (lower_bds[0] + upper_bds[0]) // 2
     # pix_mid_iy = (lower_bds[1] + upper_bds[1]) // 2
     # while not mask[pix_mid_ix, pix_mid_iy]:
