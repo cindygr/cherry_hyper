@@ -6,22 +6,18 @@ import xmltodict
 import json as json
 import imageio as imageio
 
-source_dir = "/Users/millarn/VSCode/data/cherry/numpy_output/"
-dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
-
-def flatten_arrays(source_dir, dest_dir):
+# Make one big n pixels X n channels file for each image
+def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
    
     # Make the output director
     if not exists(dest_dir):
         mkdir(dest_dir)
 
-    numpy_data_dir = source_dir + "numpy/"
-    mask_data_dir = source_dir + "numpy_output/"
-    for fname in listdir(numpy_data_dir):
+    for fname in listdir(source_dir_orig):
         # Use for reading/writing
         unique_id = fname[0:-4]
-        full_data_fname = numpy_data_dir + fname
-        full_mask_name =  mask_data_dir + fname[0:-4] + "_limited.npy"
+        full_data_fname = source_dir_orig + fname
+        full_mask_name =  source_dir_masked + fname[0:-4] + "_limited.npy"
         
         # Unique id - use for naming new files
         fname_parts = fname.split("_")
@@ -58,7 +54,16 @@ def flatten_arrays(source_dir, dest_dir):
 
 
 if __name__ == '__main__':
+    dir = getcwd()
+    if "millarn" in dir:
+        source_data_dir = "/Users/millarn/VSCode/data/cherry/numpy/"
+        source_mask_dir = "/Users/millarn/VSCode/data/cherry/numpy_output/"
+        dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
+    else:
+        source_data_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy/"
+        source_mask_dir = "/Users/cindygrimm/VSCode/data/cherry/masked/"
+        dest_dir = "/Users/cindygrimm/VSCode/data/cherry/flattened/"
     
     all_datadir = "/Users/millarn/VSCode/data/cherry/"
     numpy_data_output_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
-    flatten_arrays(all_datadir, numpy_data_output_dir)
+    flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir)

@@ -178,6 +178,14 @@ def loop_all_data(source_dir, centers):
 
 
 if __name__ == '__main__':
+    dir = getcwd()
+    if "millarn" in dir:
+        source_dir = "/Users/millarn/VSCode/data/cherry/numpy/"
+        dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_output/"
+    else:
+        source_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy/"
+        dest_dir = "/Users/cindygrimm/VSCode/data/cherry/masked/"
+
     fname = "/Users/millarn/VSCode/data/cherry/numpy_random_samples/sample_0.npy"
     n_clusters = 3
     centers, ids = read_and_cluster_hyper(fname, n_clusters=n_clusters)
