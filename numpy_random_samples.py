@@ -29,7 +29,7 @@ def select_sample_pixels(source_dir, dest_dir):
 
     #ims = [im1_name, im2_name, im3_name, im4_name]
 
-    n_total = 10000
+    n_total = 50000
     n_per_image = n_total // len(ims)
     index = 0
     for im in ims:

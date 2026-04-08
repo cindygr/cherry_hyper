@@ -8,6 +8,13 @@ import json as json
 import imageio as imageio
 
 
+# Convert the hdr data 
+#.  Copies the hdr view finder image to rgb_images (to ensure conversion is correct)
+#   Converts the raw hdr data to a numpy file (in numpy)
+#.  Creates an rgb image from the raw hdr data and saves it to rgb_imgages
+#.  Issues with the conversion (a few missing files, an incorrect (?) plant number) are in Problems.txt (this folder)
+
+
 def convert_to_numpy(hdr_path):
     # Load the hyperspectral image
     img = spy.open_image(hdr_path)
@@ -37,7 +44,6 @@ def extract_data_as_numpy():
     data_dir = "/Users/cindygrimm/VSCode/data/cherry/Cherry Hyperspectral Imaging/"
     numpy_data_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy/"
     images_data_dir = "/Users/cindygrimm/VSCode/data/cherry/rgb_images/"
-    #hdr_path = "/Users/cindygrimm/VSCode/data/cherry/2025-12-12_001/"
 
     plant_numbers = {}
     plant_names = []
@@ -212,6 +218,5 @@ def extract_data_as_numpy():
 
 
 if __name__ == '__main__':
-
     extract_data_as_numpy()
 

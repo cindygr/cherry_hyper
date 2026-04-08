@@ -4,6 +4,7 @@ from os import listdir, mkdir, chdir, getcwd
 from os.path import exists, isdir
 import json as json
 import imageio as imageio
+from magic_numbers import HyperSpectralCherryNumbers
 
 
 # Make one big n pixels X n channels file for each image
@@ -12,6 +13,8 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
     # Make the output director
     if not exists(dest_dir):
         mkdir(dest_dir)
+
+    magic_numbers = HyperSpectralCherryNumbers()
 
     for fname in listdir(source_dir_orig):
         # Use for reading/writing
@@ -25,7 +28,7 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
             print(f"Skipping {fname}, not a valid file name")
             continue
        
-        # Load data 
+        # Load data - original data plus mask
         data = np.load(full_data_fname)
         mask = np.load(full_mask_name)
         
@@ -33,7 +36,7 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
         num_pixels = np.count_nonzero(mask)
 
         # Make empty array to hold flattened data
-        flattened_data = np.zeros((num_pixels,134), dtype=np.float16)
+        flattened_data = np.zeros((num_pixels, magic_numbers.n_spectral()), dtype=np.float16)
 
         # Make map of pixel locations where mask is True
         map_name =   fname[0:-4] + "_map.json"
@@ -44,7 +47,7 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 if mask[i, j] == True:
-                    flattened_data[pixel_index] = data[i, j, 20:154]  # add bands 20-154 to flattened array
+                    flattened_data[pixel_index] = data[i, j, magic_numbers.clip_range[0]: magic_numbers.clip_range[1]]  # add bands 20-154 to flattened array
                     map.append((i, j))  # save original pixel location
                     pixel_index += 1
         np.save(dest_dir + unique_id + "_flattened.npy", flattened_data)

@@ -61,34 +61,17 @@ class SignatureClassifier:
         """
         X = []
         y = []
-        class_labels = {}
-        label_counter = 0
+        class_labels = ["Infected", "Not infected"]
         
         if not exists(data_dir):
             raise FileNotFoundError(f"Data directory not found: {data_dir}")
         
-        # Get all subdirectories (classes)
-        classes = [d for d in listdir(data_dir) 
-                  if isdir(join(data_dir, d)) and not d.startswith('.')]
-        
-        if not classes:
-            raise ValueError(f"No class subdirectories found in {data_dir}")
-        
-        print(f"Found {len(classes)} classes: {classes}")
-        
-        for class_name in sorted(classes):
-            if label_mapping and class_name in label_mapping:
-                class_label = label_mapping[class_name]
-            else:
-                class_label = label_counter
-                label_counter += 1
-            
-            class_labels[class_label] = class_name
+        for label, class_name in enumerate(class_labels):
             class_dir = join(data_dir, class_name)
             
             # Load all .npy files in this class directory
             files = [f for f in listdir(class_dir) if f.endswith('.npy')]
-            print(f"  Class '{class_name}' ({class_label}): Found {len(files)} files")
+            print(f"  Class '{class_name}' ({label}): Found {len(files)} files")
             
             for file in files:
                 file_path = join(class_dir, file)
@@ -100,11 +83,11 @@ class SignatureClassifier:
                         data = data.flatten()
                     
                     X.append(data)
-                    y.append(class_label)
+                    y.append(label)
                     
                 except Exception as e:
                     print(f"    Warning: Could not load {file}: {e}")
-        
+
         X = np.array(X)
         y = np.array(y)
         
@@ -200,7 +183,7 @@ class SignatureClassifier:
         # Classification report
         class_report = classification_report(
             self.y_test, y_pred,
-            target_names=[self.class_labels[i] for i in sorted(self.class_labels.keys())],
+            target_names=self.class_labels,
             zero_division=0
         )
         
@@ -326,7 +309,7 @@ def main():
     #     signature_2.npy
     
     data_dir = "/Users/cindygrimm/VSCode/data/cherry/signatures/"  # Modify this path
-    output_dir = "/Users/cindygrimm/VSCode/cherry_hyper/"
+    output_dir = "/Users/cindygrimm/VSCode/data/cherry/supervised/"
     
     # Check if data directory exists
     if not exists(data_dir):
