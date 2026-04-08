@@ -38,7 +38,7 @@ def select_sample_pixels(source_dir, dest_dir):
         selected_indices = np.random.choice(num_pixels, n_per_image, replace=False)
         selected_data = data[selected_indices, :]
         index += 1
-    np.save(dest_dir + f"sample_{index}_{n_total}.npy", selected_data)
+    np.save(dest_dir + f"non_flat_nir_{index}_{n_total}.npy", selected_data)
 
 
 

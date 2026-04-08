@@ -19,12 +19,13 @@ class HyperSpectralCherryNumbers:
         self.green_max = 0.45
         self.nir_max = 1.8
 
-        self.avg_lum_min = 0.075
+        self.avg_lum_min = 0.075 # Was 0.75
         self.avg_lum_max = 0.5
+        self.lum_sd_clip = 0.1
 
         self.ratio_green_to_red = 1.2
         self.ratio_green_to_blue = 1.3
-        self.ratio_nir_to_red = 3.0
+        self.ratio_nir_to_red = 1.7
 
         self.infected = {1:"P20", 2:"P33", 0:"P157", 7:"P163", 9:"P338"}
         self.not_infected = {4:"P401", 8:"P406", 5:"P418", 10:"P421", 6:"P430"}

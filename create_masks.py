@@ -7,6 +7,7 @@ import imageio as imageio
 import spectral as spy
 from skimage.morphology import area_closing
 from magic_numbers import HyperSpectralCherryNumbers
+from sklearn.linear_model import LinearRegression
 
 
 # Render the original spectral image with the masked pixels colored by their labels
@@ -40,7 +41,14 @@ def make_rgb(data, mask, lower_bds=(0, 0), upper_bds=(512, 512)):
 
     im[mask, :] *= 1.0 / perc_color
     im[mask == False, 0] = 0.0
-    im_rgb = (im * 255.0).astype(np.uint8)
+
+    im_both = np.zeros((2 * data.shape[0], data.shape[1], 3), dtype=np.float16)
+    im_both[:data.shape[0], :, :] = im
+    im_mask = mask.astype(np.float16)
+    im_both[data.shape[0]:, :, 0] = im_mask
+    im_both[data.shape[0]:, :, 1] = im_mask
+    im_both[data.shape[0]:, :, 2] = im_mask
+    im_rgb = (im_both * 255.0).astype(np.uint8)
     rgb = np.transpose(im_rgb, axes=[1,0,2])
     rgb = np.flip(rgb, axis=1)
     return rgb
@@ -85,30 +93,42 @@ def make_mask(source_dir, dest_dir):
         unique_id = fname[0:-4]
 
         # Load data and use boolean logic to select plant pixels
+        #  The primary difference between leaf pixels and other ones is that the other spectrums are "flat"        
+        #    - no bump at the green and no slope between red and near infra red
         data = np.load(full_fname)
-        data_avg_lum = np.mean(data[:, :, mn.clip_range[0]:mn.red_nir_split], axis=2) # find mean of non near infra red bands
+        
+        # If the sd of the whole spectrum is small, then it's really flat
+        data_avg_sd = np.std(data[:, :, :], axis=2) # find mean of non near infra red bands
 
-        data_bool_slope = data[:,:,mn.nir_plateau] / data[:,:, mn.red_nir_split] > mn.ratio_nir_to_red  # green pixels often have a steep slope between the red edge (92) and the NIR (123)
+        # Use the near infra red/red ratio to trim out some background pixels
+        data_avg_nir = data[:, :, mn.nir_plateau]  # Near infra red average
+        data_avg_red = data[:, :, mn.red_nir_split] # Red average
+        data_nir_red_ratio = data_avg_nir / data_avg_red
 
-        # make sure the right overall luminance
-        data_bool_less_than_white = data_avg_lum < mn.avg_lum_max  # avg less than 0.45 should remove white objects
-        data_bool_greater_than_black = data_avg_lum > mn.avg_lum_min  # avg greater than 0.075 should remove black objects
-        data_bool_brightness = np.logical_and(data_bool_less_than_white, data_bool_greater_than_black) # limit to pixels between black and white limit
+        data_avg_lf = np.zeros((data.shape[0], data.shape[1]))
+        xs = np.arange(0, data.shape[2], step=1)
+        for ix in range(0, data_avg_lf.shape[0]):
+            for iy in range(0, data_avg_lf.shape[1]):
+                # if the standard deviation is small, we know it's flat - skip
+                if data_avg_sd[ix, iy] < mn.lum_sd_clip:
+                    continue
+                # Similarly, a nir/red ratio too small is also close to a line - skip
+                if data_nir_red_ratio[ix, iy] < mn.ratio_nir_to_red:
+                    continue
 
-        # Overall brightness plus slope
-        data_bool_bright_and_slope = np.logical_and(data_bool_brightness, data_bool_slope)
+                # Only do the line fit if the pixel might be a leaf (saves a lot of computation)
+                m, b = np.polyfit(xs, np.squeeze(data[ix, iy, :]), 1)
+                ys = xs * m + b
+                diffs = ys - data[ix, iy, :]
+                diff = np.linalg.norm(diffs[mn.clip_range[0]:mn.clip_range[1]])
+                data_avg_lf[ix, iy] = diff
 
-        # Green at max value greater than both red and blue
-        data_bool_greater_than_red = data[:,:,mn.green_channel] > mn.ratio_green_to_red * data[:,:,mn.red_channel] 
-        data_bool_greater_than_blue = data[:,:,mn.green_channel] > mn.ratio_green_to_blue * data[:,:,mn.blue_channel]
-        data_bool_green_bump = np.logical_and(data_bool_greater_than_red, data_bool_greater_than_blue)
+        mask_is_line = data_avg_lf < 1.25   # Line fit error
+        mask = np.logical_not(mask_is_line)
 
-        data_bool = np.logical_and(data_bool_green_bump, data_bool_bright_and_slope)
-        data_bool = np.logical_and(data_bool_slope, data_bool_greater_than_black)
-
-        mask_pixs = np.where(data_bool)
+        mask_pixs = np.where(mask)
         upper_right = [0, 0]
-        lower_left = [data_bool.shape[0], data_bool.shape[1]]
+        lower_left = [mask.shape[0], mask.shape[1]]
         for pix in mask_pixs[0]:
             lower_left[0] = min(lower_left[0], pix)
             upper_right[0] = max(upper_right[0], pix)
@@ -116,7 +136,7 @@ def make_mask(source_dir, dest_dir):
             lower_left[1] = min(lower_left[1], pix)
             upper_right[1] = max(upper_right[1], pix)
 
-        mask_cleaned_up = area_closing(data_bool)
+        mask_cleaned_up = area_closing(mask)
         # Save the mask as a boolean numpy
         np.save(dest_dir + unique_id + "_limited.npy", mask_cleaned_up)
 

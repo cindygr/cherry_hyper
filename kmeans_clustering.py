@@ -10,7 +10,7 @@ import numpy as np
 from scipy.cluster.vq import kmeans, vq, whiten
 from skimage.color import rgb2hsv
 import matplotlib.pyplot as plt
-from skimage.color import label2rgb
+from skimage import color as skimage_color
 import json as json
 from os import listdir, mkdir, chdir, getcwd
 from os.path import exists, isdir
@@ -77,7 +77,8 @@ def plot_centers(centers):
         red_val = center[mn.red_channel - mn.clip_range[0]]
         red_nir_ratio = center[mn.nir_plateau - mn.clip_range[0]] / center[mn.red_nir_split - mn.clip_range[0]]
         lum = np.mean(center[:mn.red_nir_split - mn.clip_range[0]])
-        axs[row, col].set_title(f"G-R {green_val/red_val:0.2f} G-B {green_val/blue_val:0.2f} L {lum:0.2f} RNIR {red_nir_ratio:0.2f}")
+        lum_sd = np.std(center)
+        axs[row, col].set_title(f"G-R {green_val/red_val:0.2f} G-B {green_val/blue_val:0.2f} \nL {lum:0.2f} SD {lum_sd:0.2f} RNIR {red_nir_ratio:0.2f}")
 
     fig.tight_layout()
     plt.show()
@@ -100,28 +101,65 @@ def process_one_image(data_base_name, dest_base_name, clusters):
     # Get the ids for the flattened data
     ids = vq(data_flattened, clusters)
 
+    n_clusters = clusters.shape[0]
+
+    # Turn the labeled image into a color one
+    # custom color for each non-zero label.
+    colors = np.array(
+        [
+            [125, 0, 125],  
+            [0, 0, 255],  
+            [0, 125, 125],  
+            [0, 255, 0],  
+            [125, 125, 0],  
+            [255, 0, 0],  
+            [255, 255, 255],  
+        ],
+        dtype=np.uint8,
+        )
+    while colors.shape[0] < n_clusters:
+        if 2 * colors.shape[0] < n_clusters:
+            new_colors = np.zeros((2 * colors.shape[0] - 1, 3), dtype=np.uint8)
+            for indx in range(0, colors.shape[0]):
+                new_colors[2 * indx, :] = colors[indx, :]
+            for indx in range(0, colors.shape[0] - 1):
+                indx_prev = indx * 2
+                indx_next = indx * 2 + 2
+                new_colors[2 * indx + 1, :] = (new_colors[indx_prev, :] // 2 + new_colors[indx_next, :] // 2)
+            colors = new_colors
+        else:
+            new_colors = np.zeros((n_clusters, 3), dtype=np.uint8)
+            n_dupl = n_clusters - colors.shape[0]
+            for indx in range(1, colors.shape[0]+1):
+                new_colors[-indx, :] = colors[-indx, :]
+            for indx in range(0, n_dupl):
+                new_colors[2 * indx, :] = colors[indx, :]
+            for indx in range(0, n_dupl - 1):
+                indx_prev = indx * 2
+                indx_next = indx * 2 + 2
+                new_colors[2 * indx + 1, :] = (new_colors[indx_prev, :] // 2 + new_colors[indx_next, :] // 2)
+            colors = new_colors
+
     # Visualization - color each pixel by its cluster value
-    im_label = np.zeros((512, 512))  # Blank image
+    im_rgb = np.zeros((512, 512, 3), dtype=np.uint8)  # Blank image
     ids_list = []
-    counts = [0] * len(clusters)
+    counts = [0] * n_clusters
     for pix, id in zip(map, ids[0]):
-        im_label[pix[0], pix[1]] = id + 1
+        im_rgb[pix[0], pix[1]] = np.transpose(colors[id, :])
         ids_list.append((pix[0], pix[1], int(id)))
         counts[id] += 1
     
-    n_x_pix = 512 // len(clusters) - 1
-    x_indx = 0
-    for id in range(0, len(clusters)):
-        im_label[x_indx:x_indx+n_x_pix, 0:15] = id
-        x_indx += n_x_pix
-
-    # Turn the labeled image into a color one
-    im_rgb = label2rgb(im_label)
+    n_x_pix = im_rgb.shape[0] // n_clusters - 1
+    x_indx = im_rgb.shape[0] - 1
+    for id in range(0, n_clusters):
+        for ix in range(x_indx - n_x_pix, x_indx):
+            for iy in range(0, 15):
+                im_rgb[ix, iy, :] = np.transpose(colors[id, :])
+        x_indx -= n_x_pix
 
     # The usual fix to make the image come out the right way
     im_rgb = np.transpose(im_rgb, axes=[1,0,2])
     im_rgb = np.flip(im_rgb, axis=1)
-    im_rgb = (im_rgb * 255.0).astype(np.uint8)
 
     # Create a unique signature for each image by counting the distribution of clusters
     signature = []
@@ -192,16 +230,17 @@ if __name__ == '__main__':
         dest_signature_dir = "/Users/cindygrimm/VSCode/data/cherry/signatures/"
 
     # Where the one flattend file used for building the clusters is
-    fname = source_dir + "sample_12_50000.npy"
-    n_clusters = 7
+    fname = source_dir + "non_flat_nir_12_50000.npy"
+    n_clusters = 8
     centers = read_and_cluster_hyper(fname, n_clusters=n_clusters)
 
     fname_save_clusters = f"{fname[:-4]}_{n_clusters}.npy"
     np.save(fname_save_clusters, centers)
 
-    plot_centers(centers=centers)
-
     loop_all_data(source_dir=source_dir, dest_dir=dest_dir, centers=centers)
 
     make_classification_directories(source_dir=dest_dir, dest_dir=dest_signature_dir)
+
+    plot_centers(centers=centers)
+
     print("done")
