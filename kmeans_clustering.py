@@ -48,7 +48,7 @@ def read_and_cluster_hyper(fname, n_clusters):
     return centers_unwhitened
 
 
-def plot_centers(centers):
+def plot_centers(centers, y_scl=2.25):
     nrows = int(np.sqrt(len(centers)) + 1)
     ncols = 1 + len(centers) // nrows
     fig, axs = plt.subplots(nrows, ncols)
@@ -58,17 +58,18 @@ def plot_centers(centers):
     if centers[0].shape[0] != mn.n_spectral():
         xs = np.array(range(0, centers[0].shape[0]))
 
+    y_max = 2.25
     for indx, center in enumerate(centers):
         row = indx // ncols
         col = indx % ncols
-        axs[row, col].set_ylim(0, 2.5)
-        axs[row, col].plot([mn.clip_range[0], mn.clip_range[0]], [0, 2.25], '--k')
-        axs[row, col].plot([mn.clip_range[1], mn.clip_range[1]], [0, 2.25], '--k')
-        axs[row, col].plot([mn.blue_channel, mn.blue_channel], [0, 2.25], ':b')
-        axs[row, col].plot([mn.red_channel, mn.red_channel], [0, 2.25], ':r')
-        axs[row, col].plot([mn.green_channel, mn.green_channel], [0, 2.25], '-g')
+        axs[row, col].set_ylim(0, y_max)
+        axs[row, col].plot([mn.clip_range[0], mn.clip_range[0]], [0, y_max], '--k')
+        axs[row, col].plot([mn.clip_range[1], mn.clip_range[1]], [0, y_max], '--k')
+        axs[row, col].plot([mn.blue_channel, mn.blue_channel], [0, y_max], ':b')
+        axs[row, col].plot([mn.red_channel, mn.red_channel], [0, y_max], ':r')
+        axs[row, col].plot([mn.green_channel, mn.green_channel], [0, y_max], '-g')
         axs[row, col].plot([mn.green_range[0], mn.green_range[0], mn.green_range[1], mn.green_range[1]], [0.1, mn.green_max, mn.green_max, 0.1], '-g')
-        axs[row, col].plot(xs, center)
+        axs[row, col].plot(xs, center * y_scl)
 
         axs[row, col].plot([mn.red_nir_split, mn.red_nir_split, mn.nir_plateau], [mn.red_max, mn.nir_max, mn.nir_max], ':r')
 
@@ -231,7 +232,7 @@ if __name__ == '__main__':
 
     # Where the one flattend file used for building the clusters is
     fname = source_dir + "non_flat_nir_12_50000.npy"
-    n_clusters = 8
+    n_clusters = 12
     centers = read_and_cluster_hyper(fname, n_clusters=n_clusters)
 
     fname_save_clusters = f"{fname[:-4]}_{n_clusters}.npy"
@@ -241,6 +242,6 @@ if __name__ == '__main__':
 
     make_classification_directories(source_dir=dest_dir, dest_dir=dest_signature_dir)
 
-    plot_centers(centers=centers)
+    plot_centers(centers=centers, y_scl=100.0)
 
     print("done")

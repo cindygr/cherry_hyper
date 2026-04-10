@@ -43,6 +43,9 @@ class SignatureClassifier:
         self.y_train = None
         self.y_test = None
         self.class_labels = None
+        self.original_names = None
+        self.x_original = None
+        self.y_original = None
         
     def load_signatures(self, data_dir, label_mapping=None):
         """
@@ -66,6 +69,7 @@ class SignatureClassifier:
         if not exists(data_dir):
             raise FileNotFoundError(f"Data directory not found: {data_dir}")
         
+        self.original_names = []
         for label, class_name in enumerate(class_labels):
             class_dir = join(data_dir, class_name)
             
@@ -82,6 +86,7 @@ class SignatureClassifier:
                     if data.ndim > 1:
                         data = data.flatten()
                     
+                    self.original_names.append(file[0:-4])
                     X.append(data)
                     y.append(label)
                     
@@ -90,6 +95,9 @@ class SignatureClassifier:
 
         X = np.array(X)
         y = np.array(y)
+
+        self.x_original = X.copy()
+        self.y_original = y.copy()
         
         print(f"\nLoaded {len(X)} samples with {X.shape[1]} features")
         return X, y, class_labels
@@ -112,6 +120,7 @@ class SignatureClassifier:
         if normalize:
             self.X_train = self.scaler.fit_transform(self.X_train)
             self.X_test = self.scaler.transform(self.X_test)
+            self.x_original = self.scaler.transform(self.x_original)
         else:
             self.X_train = self.X_train
             self.X_test = self.X_test
@@ -269,7 +278,22 @@ class SignatureClassifier:
             print(f"Figure saved to {save_path}")
         
         plt.show()
-    
+
+    def find_incorrect(self):
+        # Get predictions
+        y_pred = self.classifier.predict(self.x_original) # actual predictions
+        #y_pred_proba = self.classifier.predict_proba(self.X_test)
+        bad = []
+        for yp, yo, n in zip(y_pred, self.y_original, self.original_names):
+            if yp == yo:
+                continue
+            if yo == 0:
+                print(f"FN {n}")
+            else:
+                print(f"FP {n}")
+            bad.append(n)
+        return bad
+
     def save_model(self, filepath):
         """Save the trained model to a file."""
         import pickle
@@ -343,6 +367,9 @@ def main():
     
     # ===== EVALUATE MODEL =====
     metrics = classifier.evaluate()
+    
+    # ===== EVALUATE MODEL part II =====
+    check = classifier.find_incorrect()
     
     # ===== VISUALIZE RESULTS =====
     classifier.visualize_results(

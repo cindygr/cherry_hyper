@@ -116,6 +116,11 @@ def make_mask(source_dir, dest_dir):
                 if data_nir_red_ratio[ix, iy] < mn.ratio_nir_to_red:
                     continue
 
+                # I don't know why this happens, but maybe just noise in first/last bit of data
+                if np.isclose(np.sum(data[ix, iy, mn.clip_range[0]:mn.clip_range[1]]), 0.0):
+                    data_avg_lf[ix, iy] = 0.0
+                    continue
+
                 # Only do the line fit if the pixel might be a leaf (saves a lot of computation)
                 m, b = np.polyfit(xs, np.squeeze(data[ix, iy, :]), 1)
                 ys = xs * m + b
@@ -123,7 +128,7 @@ def make_mask(source_dir, dest_dir):
                 diff = np.linalg.norm(diffs[mn.clip_range[0]:mn.clip_range[1]])
                 data_avg_lf[ix, iy] = diff
 
-        mask_is_line = data_avg_lf < 1.25   # Line fit error
+        mask_is_line = data_avg_lf < 1.3   # Line fit error, 1.25 got rid of background but cut out a few leaf pixels
         mask = np.logical_not(mask_is_line)
 
         mask_pixs = np.where(mask)

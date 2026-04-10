@@ -8,7 +8,7 @@ from magic_numbers import HyperSpectralCherryNumbers
 
 
 # Make one big n pixels X n channels file for each image
-def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
+def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir, normalize=None):
    
     # Make the output director
     if not exists(dest_dir):
@@ -48,6 +48,11 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir):
             for j in range(data.shape[1]):
                 if mask[i, j] == True:
                     flattened_data[pixel_index] = data[i, j, magic_numbers.clip_range[0]: magic_numbers.clip_range[1]]  # add bands 20-154 to flattened array
+                    if normalize == "Integral":
+                        sum_all = np.sum(flattened_data[pixel_index])
+                        if np.isclose(sum_all, 0.0):
+                            sum_all = 1.0
+                        flattened_data[pixel_index] = flattened_data[pixel_index] / sum_all
                     map.append((i, j))  # save original pixel location
                     pixel_index += 1
         np.save(dest_dir + unique_id + "_flattened.npy", flattened_data)
@@ -69,4 +74,4 @@ if __name__ == '__main__':
     
     all_datadir = "/Users/millarn/VSCode/data/cherry/"
     numpy_data_output_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
-    flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir)
+    flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir, normalize="Integral")
