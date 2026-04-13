@@ -9,7 +9,7 @@ import imageio as imageio
 
 def select_sample_pixels(source_dir, dest_dir):
 
-    plant_ids = [0, 6]
+    plant_ids = [1, 4]
     day_ids = [13, 31, 45]
     side_ids = [0, 1]
     ims = []
@@ -32,24 +32,31 @@ def select_sample_pixels(source_dir, dest_dir):
     n_total = 50000
     n_per_image = n_total // len(ims)
     index = 0
+    all_data = None
     for im in ims:
         data = np.load(source_dir + im)
         num_pixels = data.shape[0]
         selected_indices = np.random.choice(num_pixels, n_per_image, replace=False)
         selected_data = data[selected_indices, :]
+        try:
+            all_data = np.vstack((all_data, selected_data))
+        except:
+            all_data = np.copy(selected_data)
         index += 1
-    np.save(dest_dir + f"non_flat_nir_{index}_{n_total}.npy", selected_data)
+    np.save(dest_dir + f"features{index}_{n_total}.npy", all_data)
 
 
 
 if __name__ == '__main__':
     dir = getcwd()
+    feature = "_integral"
+    feature = "_features"
     if "millarn" in dir:
         source_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
         dest_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
     else:
-        source_dir = "/Users/cindygrimm/VSCode/data/cherry/flattened/"
-        dest_dir = "/Users/cindygrimm/VSCode/data/cherry/flattened/"
+        source_dir = f"/Users/cindygrimm/VSCode/data/cherry/flattened{feature}/"
+        dest_dir = f"/Users/cindygrimm/VSCode/data/cherry/flattened{feature}/"
     
     select_sample_pixels(source_dir, dest_dir)
 

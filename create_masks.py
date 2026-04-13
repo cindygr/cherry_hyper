@@ -5,29 +5,22 @@ from os.path import exists, isdir
 import json as json
 import imageio as imageio
 import spectral as spy
-from skimage.morphology import area_closing
+from skimage.morphology import area_closing, area_opening
 from magic_numbers import HyperSpectralCherryNumbers
 from sklearn.linear_model import LinearRegression
 
 
 # Render the original spectral image with the masked pixels colored by their labels
-def make_rgb(data, mask, lower_bds=(0, 0), upper_bds=(512, 512)):
+def make_rgb(data, mask):
     magic_numbers = HyperSpectralCherryNumbers()
-    # pix_mid_ix = (lower_bds[0] + upper_bds[0]) // 2
-    # pix_mid_iy = (lower_bds[1] + upper_bds[1]) // 2
-    # while not mask[pix_mid_ix, pix_mid_iy]:
-    #     pix_mid_iy += 1
-    #     pix_mid_ix += 1
-    # for band in range(0, data.shape[2], 10):
-    #     print(f"{band}, {data[pix_mid_ix, pix_mid_iy, band]}")
 
     blue_band = magic_numbers.blue_channel
     green_band = magic_numbers.green_channel
     red_band =  magic_numbers.blue_channel
 
-    blue_range = 0.25 # np.max(data[lower_bds[0]:upper_bds[0], lower_bds[1]:upper_bds[1], 20])
+    blue_range = 0.25 
     green_range = magic_numbers.green_max
-    red_range = 0.35 # np.max(data[lower_bds[0]:upper_bds[0], lower_bds[1]:upper_bds[1], 120])
+    red_range = 0.35 
 
 
     im = np.zeros((data.shape[0], data.shape[1], 3), dtype=np.float16)
@@ -100,6 +93,9 @@ def make_mask(source_dir, dest_dir):
         # If the sd of the whole spectrum is small, then it's really flat
         data_avg_sd = np.std(data[:, :, :], axis=2) # find mean of non near infra red bands
 
+        # If the sum of the clip range is close to zero, skip
+        data_mean_clip = np.mean(data[:, :, mn.clip_range[0]:mn.clip_range[1]], axis=2) # find mean of non near infra red bands
+
         # Use the near infra red/red ratio to trim out some background pixels
         data_avg_nir = data[:, :, mn.nir_plateau]  # Near infra red average
         data_avg_red = data[:, :, mn.red_nir_split] # Red average
@@ -116,11 +112,6 @@ def make_mask(source_dir, dest_dir):
                 if data_nir_red_ratio[ix, iy] < mn.ratio_nir_to_red:
                     continue
 
-                # I don't know why this happens, but maybe just noise in first/last bit of data
-                if np.isclose(np.sum(data[ix, iy, mn.clip_range[0]:mn.clip_range[1]]), 0.0):
-                    data_avg_lf[ix, iy] = 0.0
-                    continue
-
                 # Only do the line fit if the pixel might be a leaf (saves a lot of computation)
                 m, b = np.polyfit(xs, np.squeeze(data[ix, iy, :]), 1)
                 ys = xs * m + b
@@ -131,21 +122,19 @@ def make_mask(source_dir, dest_dir):
         mask_is_line = data_avg_lf < 1.3   # Line fit error, 1.25 got rid of background but cut out a few leaf pixels
         mask = np.logical_not(mask_is_line)
 
-        mask_pixs = np.where(mask)
-        upper_right = [0, 0]
-        lower_left = [mask.shape[0], mask.shape[1]]
-        for pix in mask_pixs[0]:
-            lower_left[0] = min(lower_left[0], pix)
-            upper_right[0] = max(upper_right[0], pix)
-        for pix in mask_pixs[1]:
-            lower_left[1] = min(lower_left[1], pix)
-            upper_right[1] = max(upper_right[1], pix)
-
         mask_cleaned_up = area_closing(mask)
+        mask_cleaned_up = area_opening(mask_cleaned_up, area_threshold=15)
+
+        # Double check that all pixels have valid values after mask closure
+        find_bad = np.count_nonzero(np.logical_and(mask_cleaned_up, data_mean_clip < 0.01))
+        if find_bad > 0:
+            print(f"Added bad pixels {find_bad}")
+        mask_cleaned_up[data_mean_clip < 0.01] = False
+
         # Save the mask as a boolean numpy
         np.save(dest_dir + unique_id + "_limited.npy", mask_cleaned_up)
 
-        rgb = make_rgb(data=data, mask=mask_cleaned_up, lower_bds=lower_left, upper_bds=upper_right)
+        rgb = make_rgb(data=data, mask=mask_cleaned_up)
         # Save the image as a mask
         imageio.imwrite(dest_dir + unique_id + "_mask.png", rgb.astype(np.uint8))
 

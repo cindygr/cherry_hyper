@@ -363,7 +363,7 @@ def main():
     classifier.prepare_data(X, y, normalize=True)
     
     # ===== TRAIN MODEL =====
-    classifier.train(feature_importance_top_n=10)
+    classifier.train(feature_importance_top_n=12)
     
     # ===== EVALUATE MODEL =====
     metrics = classifier.evaluate()
