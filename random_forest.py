@@ -64,7 +64,8 @@ class SignatureClassifier:
         """
         X = []
         y = []
-        class_labels = ["Infected", "Not infected"]
+        #class_labels = ["Infected", "Not infected"]
+        class_labels = ["test_group1", "test_group2"]
         
         if not exists(data_dir):
             raise FileNotFoundError(f"Data directory not found: {data_dir}")
@@ -334,6 +335,7 @@ def main():
     
     data_dir = "/Users/cindygrimm/VSCode/data/cherry/signatures/"  # Modify this path
     output_dir = "/Users/cindygrimm/VSCode/data/cherry/supervised/"
+    output_dir = "/Users/cindygrimm/VSCode/data/cherry/supervised_test/"
     
     # Check if data directory exists
     if not exists(data_dir):

@@ -225,6 +225,9 @@ def make_classification_directories(source_dir, dest_dir):
         mkdir(dest_dir + "Infected")
         mkdir(dest_dir + "Not infected")
 
+    test_group1 = {4:"P401", 8:"P406", 0:"P157", 7:"P163", 9:"P338"}
+    test_group2 = {1:"P20", 2:"P33", 5:"P418", 10:"P421", 6:"P430"}
+
     for fname in listdir(source_dir):
         if not fname.endswith(".json"):
             continue
@@ -234,12 +237,29 @@ def make_classification_directories(source_dir, dest_dir):
 
             unique_id = fname.split("_")
             plant_id = int(unique_id[0][1:])
+            last_day = True if "D45" in unique_id[1] else False
             if plant_id in magic_numbers.infected:
                 fname_out = dest_dir + "Infected/" + fname[0:-14] + ".npy"
+                fname_out2 = dest_dir + "last_day_infected/" + fname[0:-14] + ".npy"
             else:
                 fname_out = dest_dir + "Not infected/" + fname[0:-14] + ".npy"
+                fname_out2 = dest_dir + "last_day_uninfected/" + fname[0:-14] + ".npy"
             signature = data["Signature"]
             np.save(fname_out, np.array(signature))
+
+            if last_day:
+                np.save(fname_out2, np.array(signature))
+
+            if plant_id in test_group1:
+                fname_out = dest_dir + "test_group1/" + fname[0:-14] + ".npy"
+                fname_out2 = dest_dir + "last_day_test1/" + fname[0:-14] + ".npy"
+            else:
+                fname_out = dest_dir + "test_group2/" + fname[0:-14] + ".npy"
+                fname_out2 = dest_dir + "last_day_test2/" + fname[0:-14] + ".npy"
+            signature = data["Signature"]
+            np.save(fname_out, np.array(signature))
+            if last_day:
+                np.save(fname_out2, np.array(signature))
 
 
 if __name__ == '__main__':
@@ -262,7 +282,7 @@ if __name__ == '__main__':
 
     # Where the one flattend file used for building the clusters is
     fname = source_dir + f"features12_50000.npy"
-    n_clusters = 12
+    n_clusters = 6
     centers, data_mean, data_sd, centers_unwhitened = read_and_cluster_hyper(fname, n_clusters=n_clusters)
 
     fname_save_clusters = f"{fname[:-4]}_clusters_{n_clusters}.npy"

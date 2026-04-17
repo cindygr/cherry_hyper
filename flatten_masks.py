@@ -92,6 +92,7 @@ def flatten_arrays(source_dir_orig, source_dir_masked, dest_dir, normalize=None)
 
 if __name__ == '__main__':
     dir = getcwd()
+
     feature = "_integral"
     str_feature = "Integral"
     if "millarn" in dir:
@@ -101,10 +102,10 @@ if __name__ == '__main__':
     else:
         source_data_dir = "/Users/cindygrimm/VSCode/data/cherry/numpy/"
         source_mask_dir = "/Users/cindygrimm/VSCode/data/cherry/masked/"
-        dest_dir = f"/Users/cindygrimm/VSCode/data/cherry/flattened{feature}/"
+        dest_dir = f"/Users/cindygrimm/VSCode/data/cherry/flattened_raw/"
     
     all_datadir = "/Users/millarn/VSCode/data/cherry/"
     numpy_data_output_dir = "/Users/millarn/VSCode/data/cherry/numpy_flattened_arrays/"
     # Integral Random
     #flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir, normalize="Features")
-    flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir, normalize=str_feature)
+    flatten_arrays(source_dir_orig=source_data_dir, source_dir_masked=source_mask_dir, dest_dir=dest_dir, normalize=None)

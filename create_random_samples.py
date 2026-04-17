@@ -43,6 +43,11 @@ def select_sample_pixels(source_dir, dest_dir):
         except:
             all_data = np.copy(selected_data)
         index += 1
+
+    print(f"Mean {np.mean(data, axis=0)}")
+    print(f"SD {np.std(data, axis=0)}")
+    print(f"Min {np.min(data, axis=0)}")
+    print(f"Max {np.max(data, axis=0)}")
     np.save(dest_dir + f"features{index}_{n_total}.npy", all_data)
 
 
